@@ -1,6 +1,6 @@
 /*
 *	Melee Range
-*	Copyright (C) 2022 Silvers
+*	Copyright (C) 2024 Silvers
 *
 *	This program is free software: you can redistribute it and/or modify
 *	it under the terms of the GNU General Public License as published by
@@ -18,7 +18,7 @@
 
 
 
-#define PLUGIN_VERSION 		"1.6"
+#define PLUGIN_VERSION 		"2.0"
 
 /*======================================================================================
 	Plugin Info:
@@ -31,6 +31,11 @@
 
 ========================================================================================
 	Change Log:
+
+2.0 (21-Apr-2024)
+	- Removed all the melee range cvars, now using a data config instead. Requested by "little_froy".
+	- Added command "sm_melee_range_reload" to reload the data config.
+	- Added command "sm_melee_range_set" to set a melee weapon range.
 
 1.6 (11-Dec-2022)
 	- Changes to fix compile warnings on SourceMod 1.11.
@@ -65,10 +70,6 @@
 
 // TESTING:
 // give baseball_bat; give cricket_bat; give crowbar; give electric_guitar; give fireaxe; give frying_pan; give golfclub; give katana; give knife; give machete; give tonfa; give pitchfork; give shovel
-// cv l4d2_melee_range_weapon_baseball_bat "700"; cv l4d2_melee_range_weapon_cricket_bat "700"; cv l4d2_melee_range_weapon_crowbar "700"; cv l4d2_melee_range_weapon_electric_guitar "700"; cv l4d2_melee_range_weapon_fireaxe "700";
-// cv l4d2_melee_range_weapon_frying_pan "700"; cv l4d2_melee_range_weapon_golfclub "700"; cv l4d2_melee_range_weapon_katana "700"; cv l4d2_melee_range_weapon_knife "700"; cv l4d2_melee_range_weapon_machete "700"; cv l4d2_melee_range_weapon_tonfa "700";
-// cv l4d2_melee_range_weapon_pitchfork "700"; cv l4d2_melee_range_weapon_shovel "700";
-// cv l4d2_melee_range_weapon_unknown "700";
 
 
 
@@ -76,18 +77,18 @@
 #pragma newdecls required
 
 #include <sourcemod>
-#include <sdktools>
+// #include <sdktools>
 #include <dhooks>
 
 #define CVAR_FLAGS			FCVAR_NOTIFY
 #define	MAX_MELEE			14
 #define GAMEDATA			"l4d2_melee_range"
+#define CONFIG_DATA			"data/l4d2_melee_range.cfg"
 
 
-ConVar g_hCvarAllow, g_hCvarMPGameMode, g_hCvarModes, g_hCvarModesOff, g_hCvarModesTog, g_hCvarMeleeRange, g_hCvarRange[MAX_MELEE];
+ConVar g_hCvarAllow, g_hCvarMPGameMode, g_hCvarModes, g_hCvarModesOff, g_hCvarModesTog, g_hCvarMeleeRange;
 bool g_bCvarAllow, g_bMapStarted;
 
-int g_iCvarRange[MAX_MELEE];
 int g_iStockRange;
 Handle g_hDetour;
 StringMap g_hScripts;
@@ -156,21 +157,6 @@ public void OnPluginStart()
 	g_hCvarModes = CreateConVar(		"l4d2_melee_range_modes",					"",				"Turn on the plugin in these game modes, separate by commas (no spaces). (Empty = all).", CVAR_FLAGS );
 	g_hCvarModesOff = CreateConVar(		"l4d2_melee_range_modes_off",				"",				"Turn off the plugin in these game modes, separate by commas (no spaces). (Empty = none).", CVAR_FLAGS );
 	g_hCvarModesTog = CreateConVar(		"l4d2_melee_range_modes_tog",				"0",			"Turn on the plugin in these game modes. 0=All, 1=Coop, 2=Survival, 4=Versus, 8=Scavenge. Add numbers together.", CVAR_FLAGS );
-	g_hCvarRange[0] = CreateConVar(		"l4d2_melee_range_weapon_baseball_bat",		"150",			"70=Default. Range for Baseball Bat.", CVAR_FLAGS );
-	g_hCvarRange[1] = CreateConVar(		"l4d2_melee_range_weapon_cricket_bat",		"150",			"70=Default. Range for Cricket Bat.", CVAR_FLAGS );
-	g_hCvarRange[2] = CreateConVar(		"l4d2_melee_range_weapon_crowbar",			"150",			"70=Default. Range for Crowbar.", CVAR_FLAGS );
-	g_hCvarRange[3] = CreateConVar(		"l4d2_melee_range_weapon_electric_guitar",	"150",			"70=Default. Range for Electric Guitar.", CVAR_FLAGS );
-	g_hCvarRange[4] = CreateConVar(		"l4d2_melee_range_weapon_fireaxe",			"150",			"70=Default. Range for Fire Axe.", CVAR_FLAGS );
-	g_hCvarRange[5] = CreateConVar(		"l4d2_melee_range_weapon_frying_pan",		"70",			"70=Default. Range for Frying Pan.", CVAR_FLAGS );
-	g_hCvarRange[6] = CreateConVar(		"l4d2_melee_range_weapon_golfclub",			"150",			"70=Default. Range for Golf Club .", CVAR_FLAGS );
-	g_hCvarRange[7] = CreateConVar(		"l4d2_melee_range_weapon_katana",			"150",			"70=Default. Range for Katana.", CVAR_FLAGS );
-	g_hCvarRange[8] = CreateConVar(		"l4d2_melee_range_weapon_knife",			"70",			"70=Default. Range for Knife.", CVAR_FLAGS );
-	g_hCvarRange[9] = CreateConVar(		"l4d2_melee_range_weapon_machete",			"120",			"70=Default. Range for Machete.", CVAR_FLAGS );
-	g_hCvarRange[10] = CreateConVar(	"l4d2_melee_range_weapon_tonfa",			"120",			"70=Default. Range for Tonfa.", CVAR_FLAGS );
-	g_hCvarRange[11] = CreateConVar(	"l4d2_melee_range_weapon_pitchfork",		"120",			"70=Default. Range for Pitchfork.", CVAR_FLAGS );
-	g_hCvarRange[12] = CreateConVar(	"l4d2_melee_range_weapon_shovel",			"120",			"70=Default. Range for Shovel.", CVAR_FLAGS );
-	// g_hCvarRange[13] = CreateConVar(	"l4d2_melee_range_weapon_riotshield",		"70",			"70=Default. Range for Riot Shield.", CVAR_FLAGS );
-	g_hCvarRange[13] = CreateConVar(	"l4d2_melee_range_weapon_unknown",			"70",			"70=Default. Range for unknown melee weapons, 3rd party.", CVAR_FLAGS );
 	CreateConVar(						"l4d2_melee_range_version",					PLUGIN_VERSION,	"Melee Range plugin version.", FCVAR_NOTIFY|FCVAR_DONTRECORD);
 	AutoExecConfig(true,				"l4d2_melee_range");
 
@@ -181,9 +167,17 @@ public void OnPluginStart()
 	g_hCvarModes.AddChangeHook(ConVarChanged_Allow);
 	g_hCvarModesOff.AddChangeHook(ConVarChanged_Allow);
 	g_hCvarAllow.AddChangeHook(ConVarChanged_Allow);
+	g_hCvarMeleeRange.AddChangeHook(ConVarChanged_Cvars);
 
-	for( int i = 0; i < MAX_MELEE; i++ )
-		g_hCvarRange[i].AddChangeHook(ConVarChanged_Cvars);
+
+
+	// =========================
+	// COMMAND
+	// =========================
+	RegAdminCmd("sm_melee_range_reload", CmdReload, ADMFLAG_ROOT, "Reloads the Melee Weapon Range data config.");
+	RegAdminCmd("sm_melee_range_set", CmdRangeSet, ADMFLAG_ROOT, "Usage: sm_melee_range_set <melee script name - must exist in the config> <range>. Set the melee range (does not update the config).");
+
+	g_hScripts = new StringMap();
 }
 
 
@@ -191,11 +185,6 @@ public void OnPluginStart()
 // ====================================================================================================
 //					CVARS
 // ====================================================================================================
-public void OnMapStart()
-{
-	g_bMapStarted = true;
-}
-
 public void OnMapEnd()
 {
 	g_bMapStarted = false;
@@ -218,8 +207,7 @@ void ConVarChanged_Cvars(Handle convar, const char[] oldValue, const char[] newV
 
 void GetCvars()
 {
-	for( int i = 0; i < MAX_MELEE; i++ )
-		g_iCvarRange[i] = g_hCvarRange[i].IntValue;
+	g_iStockRange = g_hCvarMeleeRange.IntValue;
 }
 
 void IsAllowed()
@@ -231,7 +219,6 @@ void IsAllowed()
 	if( g_bCvarAllow == false && bCvarAllow == true && bAllowMode == true )
 	{
 		g_bCvarAllow = true;
-		g_iStockRange = g_hCvarMeleeRange.IntValue;
 
 		if( !DHookEnableDetour(g_hDetour, false, TestMeleeSwingCollisionPre) )
 			SetFailState("Failed to detour pre \"CTerrorMeleeWeapon::TestMeleeSwingCollision\".");
@@ -243,7 +230,6 @@ void IsAllowed()
 	else if( g_bCvarAllow == true && (bCvarAllow == false || bAllowMode == false) )
 	{
 		g_bCvarAllow = false;
-		g_hCvarMeleeRange.SetInt(g_iStockRange);
 
 		if( !DHookDisableDetour(g_hDetour, false, TestMeleeSwingCollisionPre) )
 			SetFailState("Failed to disable detour pre \"CTerrorMeleeWeapon::TestMeleeSwingCollision\".");
@@ -326,6 +312,95 @@ void OnGamemode(const char[] output, int caller, int activator, float delay)
 
 
 // ====================================================================================================
+//					CONFIG
+// ====================================================================================================
+public void OnMapStart()
+{
+	g_bMapStarted = true;
+	RequestFrame(OnFrameStart); // Melee weapon IDs are not valid from "Left4DHooks" until 1 frame after OnMapStart()
+}
+
+void OnFrameStart()
+{
+	LoadData();
+}
+
+Action CmdRangeSet(int client, int args)
+{
+	if( args != 2 )
+	{
+		ReplyToCommand(client, "Usage: sm_melee_range_set <melee script name - must exist in the config> <range>");
+		return Plugin_Handled;
+	}
+
+	int range;
+	char sTemp[32];
+	GetCmdArg(1, sTemp, sizeof(sTemp));
+
+	if( g_hScripts.GetValue(sTemp, range) )
+	{
+		char sValue[8];
+		GetCmdArg(2, sValue, sizeof(sValue));
+
+		g_hScripts.SetValue(sTemp, StringToInt(sValue));
+		ReplyToCommand(client, "[Melee Range] Set \"%s\" range to \"%d\"", sTemp, StringToInt(sValue));
+		return Plugin_Handled;
+	}
+
+	ReplyToCommand(client, "[Melee Range] Cannot find the \"%s\" melee script from the config.", sTemp);
+
+	return Plugin_Handled;
+}
+
+Action CmdReload(int client, int args)
+{
+	LoadData();
+	ReplyToCommand(client, "[Melee Range] Reloaded the config file.");
+	return Plugin_Handled;
+}
+
+void LoadData()
+{
+	delete g_hScripts;
+	g_hScripts = new StringMap();
+
+	// Verify config exists
+	char sPath[PLATFORM_MAX_PATH];
+	BuildPath(Path_SM, sPath, sizeof(sPath), CONFIG_DATA);
+	if( FileExists(sPath) == false )
+	{
+		return;
+	}
+
+	// Load config
+	KeyValues hFile = new KeyValues("melee_range");
+	if( !hFile.ImportFromFile(sPath) )
+	{
+		LogError("Failed to load data config: \"%s\"", CONFIG_DATA);
+		delete hFile;
+		return;
+	}
+
+	// Grab entries
+	char script[64];
+
+	hFile.GotoFirstSubKey(true);
+	do
+	{
+		// Get melee name from config
+		hFile.GetSectionName(script, sizeof(script));
+
+		// Get "time" value
+		g_hScripts.SetValue(script, hFile.GetNum("range", 70));
+	}
+	while( hFile.GotoNextKey(false) );
+
+	delete hFile;
+}
+
+
+
+// ====================================================================================================
 //					DETOURS
 // ====================================================================================================
 MRESReturn TestMeleeSwingCollisionPre(int pThis, Handle hReturn)
@@ -335,12 +410,10 @@ MRESReturn TestMeleeSwingCollisionPre(int pThis, Handle hReturn)
 		static char sTemp[16];
 		GetEntPropString(pThis, Prop_Data, "m_strMapSetScriptName", sTemp, sizeof(sTemp));
 
-		int index;
-		if( g_hScripts.GetValue(sTemp, index) )
+		int range;
+		if( g_hScripts.GetValue(sTemp, range) || g_hScripts.GetValue("unknown", range) )
 		{
-			g_hCvarMeleeRange.SetInt(g_iCvarRange[index]);
-		} else {
-			g_hCvarMeleeRange.SetInt(g_iCvarRange[MAX_MELEE - 1]);
+			g_hCvarMeleeRange.SetInt(range);
 		}
 	}
 
