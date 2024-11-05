@@ -18,7 +18,7 @@
 
 
 
-#define PLUGIN_VERSION 		"2.0"
+#define PLUGIN_VERSION 		"2.1"
 
 /*======================================================================================
 	Plugin Info:
@@ -31,6 +31,9 @@
 
 ========================================================================================
 	Change Log:
+
+2.1 (05-Nov-2024)
+	- Fixed the "Tonfa" from "Riot" zombies, and possibly other melee weapons not being recognized when missing their script name.
 
 2.0 (21-Apr-2024)
 	- Removed all the melee range cvars, now using a data config instead. Requested by "little_froy".
@@ -407,8 +410,30 @@ MRESReturn TestMeleeSwingCollisionPre(int pThis, Handle hReturn)
 {
 	if( IsValidEntity(pThis) )
 	{
-		static char sTemp[16];
+		static char sTemp[32];
 		GetEntPropString(pThis, Prop_Data, "m_strMapSetScriptName", sTemp, sizeof(sTemp));
+
+		// Fix melee weapons that don't have a script name
+		if( sTemp[0] == 0 )
+		{
+			GetEntPropString(pThis, Prop_Data, "m_ModelName", sTemp, sizeof(sTemp));
+
+			if( strncmp(sTemp[23], "bat", 3) == 0 ) sTemp = "bat";
+			else if( strncmp(sTemp[23], "cri", 3) == 0 ) sTemp = "cricket_bat";
+			else if( strncmp(sTemp[23], "cro", 3) == 0 ) sTemp = "crowbar";
+			else if( strncmp(sTemp[23], "ele", 3) == 0 ) sTemp = "electric_guitar";
+			else if( strncmp(sTemp[23], "fir", 3) == 0 ) sTemp = "fireaxe";
+			else if( strncmp(sTemp[23], "fry", 3) == 0 ) sTemp = "frying_pan";
+			else if( strncmp(sTemp[23], "gol", 3) == 0 ) sTemp = "golfclub";
+			else if( strncmp(sTemp[23], "kat", 3) == 0 ) sTemp = "katana";
+			else if( strncmp(sTemp[23], "kni", 3) == 0 ) sTemp = "knife";
+			else if( strncmp(sTemp[23], "mac", 3) == 0 ) sTemp = "machete";
+			else if( strncmp(sTemp[23], "ton", 3) == 0 ) sTemp = "tonfa";
+			else if( strncmp(sTemp[23], "pit", 3) == 0 ) sTemp = "pitchfork";
+			else if( strncmp(sTemp[23], "sho", 3) == 0 ) sTemp = "shovel";
+
+			if( sTemp[0] ) SetEntPropString(pThis, Prop_Data, "m_strMapSetScriptName", sTemp);
+		}
 
 		int range;
 		if( g_hScripts.GetValue(sTemp, range) || g_hScripts.GetValue("unknown", range) )
