@@ -1,6 +1,6 @@
 /*
 *	Melee Range
-*	Copyright (C) 2024 Silvers
+*	Copyright (C) 2025 Silvers
 *
 *	This program is free software: you can redistribute it and/or modify
 *	it under the terms of the GNU General Public License as published by
@@ -18,7 +18,7 @@
 
 
 
-#define PLUGIN_VERSION 		"2.1"
+#define PLUGIN_VERSION 		"2.2"
 
 /*======================================================================================
 	Plugin Info:
@@ -31,6 +31,10 @@
 
 ========================================================================================
 	Change Log:
+
+2.2 (04-Jan-2025)
+	- Added command "sm_melee_range" to set a specific clients melee range for all melee weapons. Requested by "IRONADE".
+	- This range ignores the configs set ranges and resets on map change.
 
 2.1 (05-Nov-2024)
 	- Fixed the "Tonfa" from "Riot" zombies, and possibly other melee weapons not being recognized when missing their script name.
@@ -92,6 +96,7 @@
 ConVar g_hCvarAllow, g_hCvarMPGameMode, g_hCvarModes, g_hCvarModesOff, g_hCvarModesTog, g_hCvarMeleeRange;
 bool g_bCvarAllow, g_bMapStarted;
 
+int g_iClientRange[MAXPLAYERS+1];
 int g_iStockRange;
 Handle g_hDetour;
 StringMap g_hScripts;
@@ -179,6 +184,7 @@ public void OnPluginStart()
 	// =========================
 	RegAdminCmd("sm_melee_range_reload", CmdReload, ADMFLAG_ROOT, "Reloads the Melee Weapon Range data config.");
 	RegAdminCmd("sm_melee_range_set", CmdRangeSet, ADMFLAG_ROOT, "Usage: sm_melee_range_set <melee script name - must exist in the config> <range>. Set the melee range (does not update the config).");
+	RegAdminCmd("sm_melee_range", CmdRange, ADMFLAG_ROOT, "Usage: sm_melee_range <#userid|name> <range or 0 to reset>.");
 
 	g_hScripts = new StringMap();
 }
@@ -191,6 +197,11 @@ public void OnPluginStart()
 public void OnMapEnd()
 {
 	g_bMapStarted = false;
+
+	for( int i = 1; i <= MaxClients; i++ )
+	{
+		g_iClientRange[i] = 0;
+	}
 }
 
 public void OnConfigsExecuted()
@@ -328,6 +339,47 @@ void OnFrameStart()
 	LoadData();
 }
 
+Action CmdRange(int client, int args)
+{
+	if( args < 2 )
+	{
+		ReplyToCommand(client, "Usage: sm_melee_range <#userid|name> <range or 0 to reset>");
+	}
+
+	char arg1[32], arg2[8];
+	GetCmdArg(1, arg1, sizeof(arg1));
+	GetCmdArg(2, arg2, sizeof(arg2));
+
+	char target_name[MAX_TARGET_LENGTH];
+	int target_list[MAXPLAYERS], target_count;
+	bool tn_is_ml;
+
+	if( (target_count = ProcessTargetString(
+		arg1,
+		client,
+		target_list,
+		MAXPLAYERS,
+		0,
+		target_name,
+		sizeof(target_name),
+		tn_is_ml)) <= 0)
+	{
+		ReplyToTargetError(client, target_count);
+		return Plugin_Handled;
+	}
+
+	int target, range = StringToInt(arg2);
+	for( int i = 0; i < target_count; i++ )
+	{
+		target = target_list[i];
+
+		g_iClientRange[target] = range;
+		ReplyToCommand(client, "[MeleeRange] Set %d on %N", range, target);
+	}
+
+	return Plugin_Handled;
+}
+
 Action CmdRangeSet(int client, int args)
 {
 	if( args != 2 )
@@ -410,6 +462,15 @@ MRESReturn TestMeleeSwingCollisionPre(int pThis, Handle hReturn)
 {
 	if( IsValidEntity(pThis) )
 	{
+		// Custom range for owner
+		int client = GetEntPropEnt(pThis, Prop_Send, "m_hOwnerEntity");
+
+		if( client && g_iClientRange[client] )
+		{
+			g_hCvarMeleeRange.SetInt(g_iClientRange[client]);
+			return MRES_Ignored;
+		}
+
 		static char sTemp[32];
 		GetEntPropString(pThis, Prop_Data, "m_strMapSetScriptName", sTemp, sizeof(sTemp));
 
