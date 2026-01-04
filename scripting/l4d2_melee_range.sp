@@ -1,6 +1,6 @@
 /*
 *	Melee Range
-*	Copyright (C) 2025 Silvers
+*	Copyright (C) 2026 Silvers
 *
 *	This program is free software: you can redistribute it and/or modify
 *	it under the terms of the GNU General Public License as published by
@@ -18,7 +18,7 @@
 
 
 
-#define PLUGIN_VERSION 		"2.2"
+#define PLUGIN_VERSION 		"2.3"
 
 /*======================================================================================
 	Plugin Info:
@@ -31,6 +31,9 @@
 
 ========================================================================================
 	Change Log:
+
+2.3 (04-Jan-2026)
+	- Fixed command "sm_melee_range" translations failing when targeting players.
 
 2.2 (04-Jan-2025)
 	- Added command "sm_melee_range" to set a specific clients melee range for all melee weapons. Requested by "IRONADE".
@@ -84,7 +87,6 @@
 #pragma newdecls required
 
 #include <sourcemod>
-// #include <sdktools>
 #include <dhooks>
 
 #define CVAR_FLAGS			FCVAR_NOTIFY
@@ -141,6 +143,9 @@ public void OnPluginStart()
 
 	if( !g_hDetour )
 		SetFailState("Failed to find \"CTerrorMeleeWeapon::GetPrimaryAttackActivity\" signature.");
+
+	// Translations for "sm_melee_range" command
+	LoadTranslations("common.phrases");
 
 	// SCRIPTS - Must match cvars list and their index numbers. The "_unknown" cvar must be last and not in scripts list.
 	// You must also increase MAX_MELEE by 1 for each script you add.
@@ -344,6 +349,7 @@ Action CmdRange(int client, int args)
 	if( args < 2 )
 	{
 		ReplyToCommand(client, "Usage: sm_melee_range <#userid|name> <range or 0 to reset>");
+		return Plugin_Handled;
 	}
 
 	char arg1[32], arg2[8];
